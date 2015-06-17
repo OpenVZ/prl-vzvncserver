@@ -11,7 +11,7 @@ OBJS = \
 	util.o \
 	vt100.o
 
-BINARY=prl_vzvncserver
+BINARY=prl_vzvncserver_app
 
 all: depend $(BINARY)
 
@@ -25,8 +25,8 @@ depend:
 	g++ $(CFLAGS) -M $(OBJS:.o=.c) > depend
 
 install:
-	install -d $(DESTDIR)/usr/sbin
-	install -m 755 $(BINARY) $(DESTDIR)/usr/sbin
+	install -d $(DESTDIR)/usr/bin
+	install -m 755 $(BINARY) $(DESTDIR)/usr/bin
 
 clean:
 	rm -f *.o $(BINARY) depend
