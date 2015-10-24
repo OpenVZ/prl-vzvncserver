@@ -26,6 +26,7 @@
 #include "vga.h"
 #include "vt100.h"
 
+#include <vzctl/libvzctl.h>
 #include <linux/vzcalluser.h>
 
 #ifndef TIOSAK
@@ -47,7 +48,7 @@ static int tty_fd = -1;
 
 static vncConsole *console = NULL;
 
-struct
+struct linuxConsoleSequence
 {
 	rfbKeySym keySym;
 	const char * sequence;
@@ -341,11 +342,12 @@ int main(int argc,char **argv)
 	int debug_level = VZ_VNC_INFO;
 
 	int dev;
+	char name[512];
 	struct vzctl_ve_configure c;
-	unsigned long veid;
+	struct vzctl_env_handle *h = NULL;
+	ctid_t ctid = {};
 	ssize_t sz;
 	pthread_t thread;
-	char *ptr;
 	int rfbArgc = 3;
 	// default VNS addr & port
 	char *rfbArgv[15] = {argv[0], (char *)"-listen", (char *)"0.0.0.0", NULL, NULL, NULL};
@@ -368,10 +370,21 @@ int main(int argc,char **argv)
 	snprintf(path, sizeof(path), "/var/log/%s/%d.log", progname, getpid());
 	init_logger(path, debug_level);
 
-	veid = strtoul(argv[optind], &ptr, 10);
-	if (*ptr != '\0')
+	vzctl2_init_log("prl_vzvncserver");
+
+	if ((rc = vzctl2_lib_init()))
+		return vzvnc_error(VZ_VNC_ERR_SYSTEM, "Failed to initialize libvzctl: %d", rc);
+
+	if (vzctl2_convertstr(argv[optind], name, sizeof(name)))
 		usage(VZ_VNC_ERR_PARAM);
-	vzvnc_logger(VZ_VNC_INFO, "CT %lu, addr %s port %s", veid, rfbArgv[2], rfbArgv[4]);
+
+	if (vzctl2_get_envid_by_name(name, ctid) &&
+			vzctl2_parse_ctid(argv[optind], ctid))
+	{
+		rc = vzvnc_error(VZ_VNC_ERR_PARAM, "Invalid ctid is specified: %s\n", argv[optind]);
+		usage(rc);
+	}
+	vzvnc_logger(VZ_VNC_INFO, "CT %s, addr %s port %s", ctid, rfbArgv[2], rfbArgv[4]);
 
 	signal(SIGINT, sigterm_handler);
 	signal(SIGTERM, sigterm_handler);
@@ -387,7 +400,11 @@ int main(int argc,char **argv)
 		goto cleanup_0;
 	}
 
-	c.veid = veid;
+	h = vzctl2_env_open(ctid, 0, &rc);
+	if (rc)
+		goto cleanup_0;
+
+	c.veid = vzctl2_env_get_veid(h);
 	c.key = VE_CONFIGURE_OPEN_TTY;
 	c.size = 0;
 
@@ -410,7 +427,7 @@ int main(int argc,char **argv)
 	close(dev);
 	if (tty_fd < 0)
 	{
-		rc = vzvnc_error(VZ_VNC_ERR_SYSTEM, "All %d tty devices are busy in CT %lu. Exiting...", MAX_TTY, veid);
+		rc = vzvnc_error(VZ_VNC_ERR_SYSTEM, "All %d tty devices are busy in CT %s. Exiting...", MAX_TTY, ctid);
 		goto cleanup_0;
 	}
 
@@ -418,16 +435,16 @@ int main(int argc,char **argv)
 	{
 		char command[PATH_MAX];
 		int ret;
-		snprintf(command, sizeof(command), "/usr/sbin/vzctl console %lu --start %d", veid, c.val + 1);
+		snprintf(command, sizeof(command), "/usr/sbin/vzctl console %s --start %d", ctid, c.val + 1);
 		ret = system(command);
 		if(ret)
 		{
-			rc = vzvnc_error( VZ_VNC_ERR_SYSTEM, "'vzctl console' returm %d", ret );
+			rc = vzvnc_error( VZ_VNC_ERR_SYSTEM, "'vzctl console' returned %d", ret );
 			goto cleanup_0;
 		}
 	}
 
-	snprintf(title, sizeof(title), "CT%lu tty%d", veid, c.val + 1);
+	snprintf(title, sizeof(title), "CT %s tty%d", ctid, c.val + 1);
 
 	/* console init */
 	if (opts.port) {
@@ -489,9 +506,7 @@ int main(int argc,char **argv)
 	rfbInitServer(console->screen);
 	if (console->screen->listenSock < 0)
 	{
-		/* rc = vzvnc_error(VZ_VNC_ERR_SOCK, "Unable to open tcp port %d for listen for CT %lu",
-			rfbGetPort(console->screen), veid); */
-		rc = vzvnc_error(VZ_VNC_ERR_SOCK, "Unable to open tcp port for listen for CT %lu", veid);
+		rc = vzvnc_error(VZ_VNC_ERR_SOCK, "Unable to open tcp port for listen for CT %s", ctid);
 		goto cleanup_0;
 	}
 
