@@ -384,7 +384,6 @@ int main(int argc,char **argv)
 		rc = vzvnc_error(VZ_VNC_ERR_PARAM, "Invalid ctid is specified: %s\n", argv[optind]);
 		usage(rc);
 	}
-	vzvnc_logger(VZ_VNC_INFO, "CT %s, addr %s port %s", ctid, rfbArgv[2], rfbArgv[4]);
 
 	signal(SIGINT, sigterm_handler);
 	signal(SIGTERM, sigterm_handler);
@@ -447,6 +446,9 @@ int main(int argc,char **argv)
 	snprintf(title, sizeof(title), "CT %s tty%d", ctid, c.val + 1);
 
 	/* console init */
+	if (opts.addr)
+		rfbArgv[2] = opts.addr;
+
 	if (opts.port) {
 		rfbArgv[rfbArgc++] = (char *)"-rfbport";
 		rfbArgv[rfbArgc++] = opts.port;
@@ -454,6 +456,8 @@ int main(int argc,char **argv)
 		rfbArgv[rfbArgc++] = opts.port;
 		rfbArgv[rfbArgc] = NULL;
 	}
+
+	vzvnc_logger(VZ_VNC_INFO, "CT %s, addr %s port %s", ctid, rfbArgv[2], rfbArgv[4]);
 
 	if (opts.sslkey)
 	{
