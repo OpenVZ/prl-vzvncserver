@@ -571,7 +571,7 @@ void vcPtrAddEventProc(int buttonMask,int x,int y,rfbClientPtr cl)
     }
   } else if(c->currentlyMarking) {
     int i,j;
-    if(c->markStart<c->markEnd) {
+    if(c->markStart<=c->markEnd) {
       i=c->markStart; j=c->markEnd+1;
     } else {
       i=c->markEnd; j=c->markStart;
