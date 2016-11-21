@@ -409,91 +409,6 @@ void vcPutCharColour(vncConsolePtr c,unsigned char ch,unsigned char foreColour,u
   }
 }
 
-void vcPrint(vncConsolePtr c,unsigned char* str)
-{
-  while(*str) {
-    vcPutChar(c,*str);
-    str++;
-  }
-}
-
-void vcPrintColour(vncConsolePtr c,unsigned char* str,unsigned char foreColour,unsigned char backColour)
-{
-  while(*str) {
-    vcPutCharColour(c,*str,foreColour,backColour);
-    str++;
-  }
-}
-
-void vcPrintF(vncConsolePtr c,char* format,...)
-{
-  va_list args;
-  char buf[4096];
-  va_start(args, format);
-  vsprintf(buf, format, args);
-  vcPrint(c,(unsigned char*)buf);
-  va_end(args);
-}
-
-void vcPrintFColour(vncConsolePtr c,unsigned char foreColour,unsigned char backColour,char* format,...)
-{
-  va_list args;
-  char buf[4096];
-  va_start(args, format);
-  vsprintf(buf, format, args);
-  vcPrintColour(c,(unsigned char*)buf,foreColour,backColour);
-  va_end(args);
-}
-
-char vcGetCh(vncConsolePtr c)
-{
-  if(c->inputCount>0) {
-    char ch;
-    ch=c->inputBuffer[0];
-    c->inputCount--;
-    if(c->inputCount>0)
-      memmove(c->inputBuffer,c->inputBuffer+1,c->inputCount);
-    return(ch);
-  } else
-    return(0);
-}
-
-char vcGetChar(vncConsolePtr c)
-{
-  while(rfbIsActive(c->screen) && c->inputCount==0)
-    vcProcessEvents(c);
-  return(vcGetCh(c));
-}
-
-char *vcGetString(vncConsolePtr c,char *buffer,int bufferSize)
-{
-  char *bufferBackup=c->inputBuffer;
-  int i,count=bufferSize-1;
-
-  if(count>c->inputCount)
-    count=c->inputCount;
-  for(i=1;i<count && bufferBackup[i-1]!='\n';i++);
-  if(i<count || i==bufferSize-1) {
-    memcpy(buffer,bufferBackup,i);
-    buffer[i+1]=0;
-    c->inputCount-=i;
-    memmove(bufferBackup,bufferBackup+i+2,c->inputCount);
-    return(buffer);
-  }
-  memcpy(buffer,bufferBackup,c->inputCount);
-  count=c->inputSize;
-  c->inputSize=bufferSize;
-  c->inputBuffer=buffer;
-  while(rfbIsActive(c->screen)
-      && c->inputCount<bufferSize-1 && buffer[c->inputCount-1]!='\n')
-    vcProcessEvents(c);
-  buffer[c->inputCount]=0;
-  c->inputBuffer=bufferBackup;
-  c->inputSize=count;
-  c->inputCount=0;
-  return(buffer);
-}
-
 void vcKbdAddEventProc(rfbBool down,rfbKeySym keySym,rfbClientPtr cl)
 {
   vncConsolePtr c=(vncConsolePtr)cl->screen->screenData;
@@ -620,11 +535,6 @@ void vcUnmark(vncConsolePtr c)
   }
   for(;i<j;i++)
     vcToggleMarkCell(c,i);
-}
-
-void vcProcessEvents(vncConsolePtr c)
-{
-  rfbProcessEvents(c->screen,c->selectTimeOut);
 }
 
 /* before using this function, hide the cursor */

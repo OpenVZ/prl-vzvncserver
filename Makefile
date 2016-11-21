@@ -2,8 +2,9 @@ DEBUG=1
 
 BUILD_VERSION ?= "\"7.0.0\""
 VERSION=$(if $(BUILD_VERSION),-DVER_PRODUCTVERSION_STR=$(BUILD_VERSION))
-CFLAGS += $(if $(DEBUG),-g -O0 -DDEBUG,-O2) $(VERSION) -D_LIN_ -Wall -c -I /usr/include/prlsdk/
-LDFLAGS += $(if $(DEBUG),-g  -rdynamic,) -lprl_sdk -lpthread -lvncserver -lvzctl2
+CC = gcc
+CFLAGS += $(if $(DEBUG),-g -O0 -DDEBUG,-O2) $(VERSION) -D_LIN_ -Wall -c
+LDFLAGS += $(if $(DEBUG),-g  -rdynamic,) -lpthread -lvncserver -lvzctl2
 
 OBJS = \
 	console.o \
@@ -16,13 +17,13 @@ BINARY=prl_vzvncserver_app
 all: depend $(BINARY)
 
 $(BINARY): $(OBJS)
-	g++ -o $@ $(prlctl_OBJS) $(OBJS) $(LDFLAGS)
+	$(CC) -o $@ $(OBJS) $(LDFLAGS)
 
 %.o: %.c
-	g++ -c $(CFLAGS) -o $@ $<
+	$(CC) -c $(CFLAGS) -o $@ $<
 
 depend:
-	g++ $(CFLAGS) -M $(OBJS:.o=.c) > depend
+	$(CC) $(CFLAGS) -M $(OBJS:.o=.c) > depend
 
 install:
 	install -d $(DESTDIR)/usr/bin
