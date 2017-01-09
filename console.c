@@ -250,12 +250,12 @@ void vcDeleteLines(vncConsolePtr c, int from, int f)
 	vcHideCursor(c);
 	if( g > 0 )
 	{
-		memcpy(c->screenBuffer + from * c->width,
+		memmove(c->screenBuffer + from * c->width,
 				c->screenBuffer + (from + f) * c->width,
 				g * c->width);
 #ifdef USE_ATTRIBUTE_BUFFER
 		if( c->attributeBuffer )
-			memcpy(c->attributeBuffer + from * c->width,
+			memmove(c->attributeBuffer + from * c->width,
 					c->attributeBuffer + (from + f) * c->width,
 					g * c->width);
 #endif
@@ -290,12 +290,12 @@ void vcDeleteCharacters(vncConsolePtr c, int f)
 	vcHideCursor(c);
 	if (g > 0)
 	{
-		memcpy(c->screenBuffer + c->y * c->width + c->x,
+		memmove(c->screenBuffer + c->y * c->width + c->x,
 			   c->screenBuffer + c->y * c->width + c->x + f,
 			   g);
 #ifdef USE_ATTRIBUTE_BUFFER
 		if( c->attributeBuffer )
-			memcpy(c->attributeBuffer + c->y * c->width + c->x,
+			memmove(c->attributeBuffer + c->y * c->width + c->x,
 				   c->attributeBuffer + c->y * c->width + c->x + f,
 				   g);
 #endif
