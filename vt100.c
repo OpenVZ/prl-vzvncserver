@@ -29,11 +29,12 @@
 static int esc_s = 0;
 
 #define ESC 27
+#define ESCPARMS_SIZE 16
 
 static unsigned char vt_fg;		/* Standard foreground color. */
 static unsigned char vt_bg;		/* Standard background color. */
 
-static int escparms[8];		/* Cumulated escape sequence. */
+static int escparms[ESCPARMS_SIZE];		/* Cumulated escape sequence. */
 static int ptr;                 /* Index into escparms array. */
 
 static short newy1 = 0;		/* Current size of scrolling region. */
@@ -257,7 +258,7 @@ static void state2(vncConsole *console, unsigned char c)
 	}
 	/* Separation between numbers ? */
 	if (c == ';') {
-		if (ptr < 15)
+		if (ptr < ESCPARMS_SIZE - 1)
 			ptr++;
 		return;
 	}
