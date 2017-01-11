@@ -34,7 +34,7 @@ static int esc_s = 0;
 static unsigned char vt_fg;		/* Standard foreground color. */
 static unsigned char vt_bg;		/* Standard background color. */
 
-static int escparms[ESCPARMS_SIZE];		/* Cumulated escape sequence. */
+static unsigned short escparms[ESCPARMS_SIZE];		/* Cumulated escape sequence. */
 static int ptr;                 /* Index into escparms array. */
 
 static short newy1 = 0;		/* Current size of scrolling region. */
@@ -248,7 +248,7 @@ static void ansi_mode(int on_off)
  */
 static void state2(vncConsole *console, unsigned char c)
 {
-	int x, y, f;
+	unsigned short x, y, f;
 	unsigned char attr;
 
 	/* See if a number follows */
@@ -475,10 +475,14 @@ static void state2(vncConsole *console, unsigned char c)
 		fprintf(stdout, "Insert Characters\n");
 		break;
 	case 'r': /* Set scroll region */
-		if ((y = escparms[0]) == 0)
+		y = escparms[0];
+		x = escparms[1];
+		if (y == 0)
 			y = 1;
-		if ((x = escparms[1]) == 0)
+		if (x == 0 || x > console->height)
 			x = console->height;
+		if (y > newy2)
+			y = newy2 + 1;
 		console->sstart = y - 1;
 		console->sheight = x;
 		fprintf(stdout, "Set scroll region (%d, %d)\n", console->sstart, console->sheight);
