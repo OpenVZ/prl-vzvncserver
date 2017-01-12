@@ -205,7 +205,11 @@ void vcCheckCoordinates(vncConsolePtr c)
 
 void vcInsertLines(vncConsolePtr c, int from, int f)
 {
-	int g, y;
+	int g, y, y2;
+
+	if ( f > c->sheight )
+		f = c->sheight;
+
 	g = c->sheight - from - f;
 	y = from * c->cHeight;
 	vcHideCursor(c);
@@ -236,15 +240,22 @@ void vcInsertLines(vncConsolePtr c, int from, int f)
 			   0x07,
 			   f * c->width);
 #endif
+	y2 = y + f * c->cHeight;
+	if ( y2 > c->screen->height )
+		y2 = c->screen-> height;
 	rfbFillRect( c->screen,
 				 0, y,
-				 c->screen->width, y + f * c->cHeight,
+				 c->screen->width, y2,
 				 c->backColour);
 }
 
 void vcDeleteLines(vncConsolePtr c, int from, int f)
 {
 	int g, y;
+
+	if ( f > c->sheight )
+		f = c->sheight;
+
 	g = c->sheight - from - f;
 	y = from * c->cHeight;
 	vcHideCursor(c);
@@ -284,9 +295,14 @@ void vcDeleteLines(vncConsolePtr c, int from, int f)
 void vcDeleteCharacters(vncConsolePtr c, int f)
 {
 	int g, x, y;
+
+	if (f > c->width)
+		f = c->width;
+
 	g = c->width - c->x - f;
 	x = c->x * c->cWidth;
 	y = c->y * c->cHeight;
+
 	vcHideCursor(c);
 	if (g > 0)
 	{
