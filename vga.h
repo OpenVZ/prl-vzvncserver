@@ -1,3 +1,15 @@
+/*
+ * vga.h
+ *
+ * Copyright (C) 2003 Johannes E. Schindelin <Johannes.Schindelin@gmx.de>
+ * Copyright (C) 2015-2017 Parallels IP Holdings GmbH
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version
+ * 2 of the License, or (at your option) any later version.
+ */
+
 unsigned char vgaFontData[2399]={
 0x7c,0xc6,0xc6,0xde,0xde,0xde,0xdc,0xc0,0x7c, /* 0 */
 0x7e,0x81,0xa5,0x81,0x81,0xa5,0x99,0x81,0x81,0x7e, /* 1 */
