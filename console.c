@@ -14,6 +14,8 @@
 #include <rfb/keysym.h>
 #include "console.h"
 
+#define MAX_CUT_TEXT_SYMBOLS 65535
+
 unsigned char colourMap16[16*3]={
   /* 0 black       #000000 */ 0x00,0x00,0x00,
   /* 1 maroon      #800000 */ 0x80,0x00,0x00,
@@ -33,16 +35,21 @@ unsigned char colourMap16[16*3]={
   /* f white       #ffffff */ 0xff,0xff,0xff
 };
 
-void MakeColourMap16(vncConsolePtr c)
+int MakeColourMap16(vncConsolePtr c)
 {
   rfbColourMap* colourMap=&(c->screen->colourMap);
   if(colourMap->count)
     free(colourMap->data.bytes);
   colourMap->data.bytes= (unsigned char *)malloc(16*3);
+  if (colourMap->data.bytes == NULL) {
+    rfbLog("Unable to allocate mem for colourMap->data.bytes\n");
+    return -1;
+  }
   memcpy(colourMap->data.bytes,colourMap16,16*3);
   colourMap->count=16;
   colourMap->is16=FALSE;
   c->screen->serverFormat.trueColour=FALSE;
+  return 0;
 }
 
 void vcDrawOrHideCursor(vncConsolePtr c)
@@ -91,16 +98,29 @@ vncConsolePtr vcGetConsole(int *argc,char **argv,
 			   )
 {
   vncConsolePtr c=(vncConsolePtr)malloc(sizeof(vncConsole));
+  if (c == NULL) {
+    rfbLog("Unable to allocate sizeof(vncConsole) = %zu mem.\n", sizeof(vncConsole));
+    return NULL;
+  }
 
   c->font=font;
   c->width=width;
   c->height=height;
   c->screenBuffer=(char*)malloc(width*height);
+  if (c->screenBuffer == NULL) {
+    rfbLog("Unable to allocate width*height mem for screenBuffer, width = %d, height = %d\n",
+             width, height);
+    return NULL;
+  }
   memset(c->screenBuffer,' ',width*height);
 #ifdef USE_ATTRIBUTE_BUFFER
   if(withAttributes) {
     c->attributeBuffer=(char*)malloc(width*height);
-    memset(c->attributeBuffer,0x07,width*height);
+    if (c->attributeBuffer != NULL)
+        memset(c->attributeBuffer,0x07,width*height);
+    else
+        rfbLog("Unable to allocate width*height mem for attrBuffer, width = %d, height = %d\n", 
+                width, height);
   } else
     c->attributeBuffer=NULL;
 #endif
@@ -113,6 +133,11 @@ vncConsolePtr vcGetConsole(int *argc,char **argv,
   c->cursorIsDrawn=FALSE;
   c->dontDrawCursor=FALSE;
   c->inputBuffer=(char*)malloc(1024);
+  if (c->inputBuffer == NULL) {
+    rfbLog("Unable to allocate mem for inputBuffer\n");
+    return NULL;
+  }
+  
   c->inputSize=1024;
   c->inputCount=0;
   c->selection=0;
@@ -142,13 +167,19 @@ vncConsolePtr vcGetConsole(int *argc,char **argv,
   c->screen->displayHook=vcMakeSureCursorIsDrawn;
   c->screen->frameBuffer=
     (char*)malloc(c->screen->width*c->screen->height);
+  if (c->screen->frameBuffer == NULL) {
+    rfbLog("Unable to allocate memory for screen frameBuffer, width = %d, height = %d\n",
+        width, height);
+    return NULL;
+  }
   memset(c->screen->frameBuffer,c->backColour,
 	 c->screen->width*c->screen->height);
   c->screen->kbdAddEvent=vcKbdAddEventProc;
   c->screen->ptrAddEvent=vcPtrAddEventProc;
   c->screen->setXCutText=vcSetXCutTextProc;
 
-  MakeColourMap16(c);
+  if (MakeColourMap16(c))
+    return NULL;
   c->foreColour=0x7;
   c->backColour=0;
 
@@ -512,8 +543,16 @@ void vcPtrAddEventProc(int buttonMask,int x,int y,rfbClientPtr cl)
     } else {
       i=c->markEnd; j=c->markStart;
     }
+    if (j - i <= 0 || j - i > c->width * c->height) {
+        rfbLog("vcPtrAddEventProc: something wrong with markStart and markEnd\n");
+        return;
+    }
     if(c->selection) free(c->selection);
     c->selection=(char*)malloc(j-i+1);
+    if (c->selection == NULL) {
+        rfbLog("Unable to allocate selection mem, j = %d, i = %d\n", i, j);
+        return;
+    }
     memcpy(c->selection,c->screenBuffer+i,j-i);
     c->selection[j-i]=0;
     vcUnmark(c);
@@ -524,10 +563,22 @@ void vcPtrAddEventProc(int buttonMask,int x,int y,rfbClientPtr cl)
 
 void vcSetXCutTextProc(char* str,int len, struct _rfbClientRec* cl)
 {
+  if (str == NULL || len <= 0) {
+    rfbLog("vcSetXCutTextProc: str == NULL or len == 0");
+    return;
+  }
+  if (len > MAX_CUT_TEXT_SYMBOLS) {
+    rfbLog("vcSetXCutTextProc: too long selection");
+    return;
+  }
   vncConsolePtr c=(vncConsolePtr)cl->screen->screenData;
 
   if(c->selection) free(c->selection);
   c->selection=(char*)malloc(len+1);
+  if (c->selection == NULL) {
+    rfbLog("Unable to allocate selection mem, len = %d", len);
+    return;
+  }
   memcpy(c->selection,str,len);
   c->selection[len]=0;
 }
