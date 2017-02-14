@@ -21,6 +21,7 @@
 #include <libgen.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <syslog.h>
 
 #include <rfb/keysym.h>
@@ -436,15 +437,38 @@ int main(int argc,char **argv)
 
 	if (c.val > 1)
 	{
-		char command[PATH_MAX];
-		int ret;
-		snprintf(command, sizeof(command), "/usr/sbin/vzctl console %s --start %d", ctid, c.val + 1);
-		ret = system(command);
-		if(ret)
-		{
-			rc = vzvnc_error( VZ_VNC_ERR_SYSTEM, "'vzctl console' returned %d", ret );
-			goto cleanup_0;
-		}
+        pid_t pid;
+        int status;
+        char tty_buf[3]; //MAX_TTY == 12, maximum - 2 chars
+
+        sprintf(tty_buf, "%u", c.val + 1);
+
+        char *args[] = {"/usr/sbin/vzctl", "console", ctid, "--start", tty_buf, NULL};
+
+        pid = fork();
+        if (pid == -1)
+        {
+            rc = vzvnc_error( VZ_VNC_ERR_SYSTEM, "Unable to start vzctl console: fork failed"); 
+            goto cleanup_0;
+        }
+        else if (pid > 0)
+        {
+            if (waitpid(pid, &status, 0) != pid)
+            {
+                rc = vzvnc_error( VZ_VNC_ERR_SYSTEM, "Unable to start vzctl console: waitpid failed");
+                goto cleanup_0;
+            }
+            if (WIFEXITED(status) && WEXITSTATUS(status))
+            {
+                rc = vzvnc_error( VZ_VNC_ERR_SYSTEM, "Unable to start vzctl console: program returned %d", status);
+                goto cleanup_0;
+            }
+        }
+        else
+        {
+            execv(args[0], args);
+            exit(1);
+        }
 	}
 
 	snprintf(title, sizeof(title), "CT %s tty%d", ctid, c.val + 1);
