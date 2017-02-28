@@ -1,9 +1,12 @@
+include Makefile.incl
+
 DEBUG=1
 
 BUILD_VERSION ?= "\"7.0.0\""
 VERSION=$(if $(BUILD_VERSION),-DVER_PRODUCTVERSION_STR=$(BUILD_VERSION))
 CC = gcc
-CFLAGS += $(if $(DEBUG),-g -O0 -DDEBUG,-O2) $(VERSION) -D_LIN_ -Wall -c
+CFLAGS += $(if $(DEBUG),-g -O0 -DDEBUG,-O2) $(VERSION) \
+	-DPRODUCT_NAME_SHORT=\"$(PRODUCT_NAME_SHORT)\" -D_LIN_ -Wall -c
 LDFLAGS += $(if $(DEBUG),-g  -rdynamic,) -lpthread -lvncserver -lvzctl2
 
 OBJS = \

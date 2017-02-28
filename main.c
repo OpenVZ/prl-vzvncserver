@@ -215,7 +215,7 @@ static void *rfb_event_handler(void* data)
 
 static void usage(int code)
 {
-	fprintf(stderr, "Virtuozzo VNC server for Containers\n");
+	fprintf(stderr, PRODUCT_NAME_SHORT " VNC server for Containers\n");
 	fprintf(stderr, "Usage: %s [options] Container ID\n", progname);
 	fprintf(stderr,"  Options:\n");
 	fprintf(stderr,"    -l/--listen ADDR    listen for connections only on network interface with\n");
