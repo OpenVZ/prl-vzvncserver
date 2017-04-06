@@ -525,10 +525,10 @@ int main(int argc,char **argv)
 
 	if (opts.auto_port) {
 		console->screen->autoPort = TRUE;
-/*		if (opts.min_port)
+		if (opts.min_port)
 			console->screen->minPort = opts.min_port;
 		if (opts.max_port)
-			console->screen->maxPort = opts.max_port; */
+			console->screen->maxPort = opts.max_port;
 	}
 
 	if (opts.passwd) {
