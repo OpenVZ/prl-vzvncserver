@@ -237,7 +237,8 @@ static void usage(int code)
 	fprintf(stderr,"       --auto-port      select free TCP port for RFB protocol in range\n");
 	fprintf(stderr,"       --min-port       set lower limit of range for --auto-port option (includes)\n");
 	fprintf(stderr,"       --max-port       set upper limit of range for --auto-port option (includes)\n");
-	fprintf(stderr,"    -d/--debug LEVEL    set debug level (1-3, 2 as default)\n");
+	fprintf(stderr,"    -d/--debug LEVEL    set debug level for logs (1-3, 2 as default)\n");
+	fprintf(stderr,"    -v/--verbose        set verbose level for stdout/stderr\n");
 	fprintf(stderr,"    -c/--sslcert CFILE  specify SSL certificate file for websockets\n");
 	fprintf(stderr,"    -s/--system         use tty1 (aka /dev/console) to connect with\n");
 	fprintf(stderr,"    -k/--sslkey KFILE   specify SSL key file for websockets\n");
@@ -255,6 +256,7 @@ struct options {
 	unsigned min_port;
 	unsigned debug_level;
 	char passwd;
+	int is_verbose;
 };
 
 static int parse_cmd_line(int argc, char *argv[], struct options *opts)
@@ -273,6 +275,7 @@ static int parse_cmd_line(int argc, char *argv[], struct options *opts)
 		{"sslkey", required_argument, NULL, 'k'},
 		{"sslcert", required_argument, NULL, 'c'},
 		{"system", no_argument, NULL, 's'},
+		{"verbose", no_argument, NULL, 'v'},
 		{"help", no_argument, NULL, 'h'},
 		{ NULL, 0, NULL, 0 }
 	};
@@ -281,7 +284,7 @@ static int parse_cmd_line(int argc, char *argv[], struct options *opts)
 
 	while (1)
 	{
-		c = getopt_long(argc, argv, "sl:p:d:hk:c:", options, NULL);
+		c = getopt_long(argc, argv, "sl:p:d:hvk:c:", options, NULL);
 		if (c == -1)
 			break;
 		switch (c)
@@ -315,6 +318,9 @@ static int parse_cmd_line(int argc, char *argv[], struct options *opts)
 			break;
 		case 's':
 			system_console = 1;
+			break;
+		case 'v':
+			opts->is_verbose = 1;
 			break;
 		case 1:
 			opts->auto_port = 1;
@@ -372,6 +378,8 @@ int main(int argc,char **argv)
 	struct options opts;
 	char passwd[MAX_PASSWD];
 	const char *passwds[] = {passwd, 0};
+	time_t now;
+	struct tm * timeinfo;
 
 	strncpy(progname, basename(argv[0]), sizeof(progname));
 	openlog(progname, LOG_CONS, LOG_DAEMON);
@@ -385,8 +393,11 @@ int main(int argc,char **argv)
 
 	snprintf(path, sizeof(path), "/var/log/%s", progname);
 	mkdir(path, 0755);
-	snprintf(path, sizeof(path), "/var/log/%s/%d.log", progname, getpid());
-	init_logger(path, debug_level);
+	time(&now);
+	timeinfo = localtime(&now);
+	snprintf(path, sizeof(path), "/var/log/%s/%s-%d%02d%02d.log", progname, argv[optind],
+			timeinfo->tm_year + 1900, timeinfo->tm_mon + 1, timeinfo->tm_mday);
+	init_logger(path, debug_level, opts.is_verbose);
 
 	vzctl2_init_log("prl_vzvncserver");
 
