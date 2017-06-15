@@ -397,7 +397,6 @@ int main(int argc,char **argv)
 	timeinfo = localtime(&now);
 	snprintf(path, sizeof(path), "/var/log/%s/%s-%d%02d%02d.log", progname, argv[optind],
 			timeinfo->tm_year + 1900, timeinfo->tm_mon + 1, timeinfo->tm_mday);
-	init_logger(path, debug_level, opts.is_verbose);
 
 	vzctl2_init_log("prl_vzvncserver");
 
@@ -510,6 +509,8 @@ int main(int argc,char **argv)
 	}
 
 	vzvnc_logger(VZ_VNC_INFO, "CT %s, addr %s port %s", ctid, rfbArgv[2], rfbArgv[4]);
+
+	init_logger(path, debug_level, opts.is_verbose);
 
 	if (opts.sslkey)
 	{

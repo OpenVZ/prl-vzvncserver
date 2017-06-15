@@ -36,7 +36,7 @@
 
 #include "util.h"
 
-static int loglevel = 0;
+static int loglevel = VZ_VNC_INFO;
 static char *logfile = NULL;
 
 void init_logger(const char * log_file, int log_level, int is_verbose)
