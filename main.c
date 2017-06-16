@@ -510,8 +510,6 @@ int main(int argc,char **argv)
 
 	vzvnc_logger(VZ_VNC_INFO, "CT %s, addr %s port %s", ctid, rfbArgv[2], rfbArgv[4]);
 
-	init_logger(path, debug_level, opts.is_verbose);
-
 	if (opts.sslkey)
 	{
 		rfbArgv[rfbArgc++] = (char *)"-sslkeyfile";
@@ -561,6 +559,7 @@ int main(int argc,char **argv)
 	}
 
 	rfbInitServer(console->screen);
+	init_logger(path, debug_level, opts.is_verbose);
 	if (console->screen->listenSock < 0)
 	{
 		rc = vzvnc_error(VZ_VNC_ERR_SOCK, "Unable to open tcp port for listen for CT %s", ctid);
