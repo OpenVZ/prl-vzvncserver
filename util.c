@@ -32,18 +32,24 @@
 #include <stdarg.h>
 #include <error.h>
 #include <time.h>
+#include <rfb/rfb.h>
 
 #include "util.h"
 
-static int loglevel = 0;
+static int loglevel = VZ_VNC_INFO;
 static char *logfile = NULL;
 
-void init_logger(const char * log_file, int log_level)
+void init_logger(const char * log_file, int log_level, int is_verbose)
 {
+	rfbLogEnable(is_verbose);
 	if (logfile)
 		free(logfile);
 	logfile = strdup(log_file);
 	loglevel = log_level;
+	if (!is_verbose) {
+		freopen("/dev/null", "w", stdout);
+		freopen("/dev/null", "w", stderr);
+	}
 }
 
 int get_loglevel()

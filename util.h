@@ -41,7 +41,7 @@ extern "C" {
 #define VZ_VNC_INFO		2
 #define VZ_VNC_DEBUG		3
 
-void init_logger(const char * log_file, int log_level);
+void init_logger(const char * log_file, int log_level, int is_verbose);
 void vzvnc_logger(int log_level, const char * format, ...);
 int vzvnc_error(int err_code, const char * format, ...);
 
