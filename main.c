@@ -59,6 +59,8 @@ static char progname[NAME_MAX + 1];
 static char title[128];
 
 static int handle_rfb_event = 0;
+static sig_atomic_t shutting_down = 0;
+
 #ifdef _WITH_MUTEX_
 static pthread_mutex_t mutex;
 #endif
@@ -188,12 +190,14 @@ static int system_console = 0;
 
 static void _shutdown()
 {
-	if (console != NULL)
-		rfbShutdownServer(console->screen, 1);
-	if (tty_fd != -1) {
-		if( !system_console )
-			ioctl(tty_fd, TIOSAK);
-		close(tty_fd);
+	if (!shutting_down) {
+		shutting_down = 1;
+		if (tty_fd != -1) {
+			if( !system_console )
+				ioctl(tty_fd, TIOSAK);
+			close(tty_fd);
+			tty_fd = -1;
+		}
 	}
 }
 
@@ -202,7 +206,6 @@ static void sigterm_handler(int sig)
 // TODO - close session ^D	write(tty_fd, " ", 1);
 	vzvnc_logger(VZ_VNC_INFO, "signal %d, exited", sig);
 	_shutdown();
-	exit(0);
 }
 
 static void *rfb_event_handler(void* data)
@@ -587,7 +590,7 @@ int main(int argc,char **argv)
 	vcHideCursor(console);
 	vt_init(console);
 
-	while (rfbIsActive(console->screen)) {
+	while (rfbIsActive(console->screen) && !shutting_down) {
 		sz = read(tty_fd, &buf, sizeof(buf));
 		if (sz == -1) {
 			rc = vzvnc_error(VZ_VNC_ERR_SYSTEM, "read(): %m");
@@ -610,6 +613,8 @@ cleanup_1:
 	handle_rfb_event = 0;
 	pthread_join(thread, NULL);
 cleanup_0:
+	if (console != NULL)
+		rfbShutdownServer(console->screen, 1);
 #ifdef _WITH_MUTEX_
 	pthread_mutex_destroy(&mutex);
 #endif
