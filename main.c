@@ -240,6 +240,8 @@ static void usage(int code)
 	fprintf(stderr,"       --auto-port      select free TCP port for RFB protocol in range\n");
 	fprintf(stderr,"       --min-port       set lower limit of range for --auto-port option (includes)\n");
 	fprintf(stderr,"       --max-port       set upper limit of range for --auto-port option (includes)\n");
+	fprintf(stderr,"       --connect-timeout set websocket connect timeout\n");
+	fprintf(stderr,"       --send-timeout   set websocket send timeout\n");
 	fprintf(stderr,"    -d/--debug LEVEL    set debug level for logs (1-3, 2 as default)\n");
 	fprintf(stderr,"    -v/--verbose        set verbose level for stdout/stderr\n");
 	fprintf(stderr,"    -c/--sslcert CFILE  specify SSL certificate file for websockets\n");
@@ -260,6 +262,8 @@ struct options {
 	unsigned debug_level;
 	char passwd;
 	int is_verbose;
+	int ws_connect_timeout;
+	int ws_send_timeout;
 };
 
 static int parse_cmd_line(int argc, char *argv[], struct options *opts)
@@ -273,6 +277,8 @@ static int parse_cmd_line(int argc, char *argv[], struct options *opts)
 		{"auto-port", no_argument, NULL, 1},
 		{"min-port", required_argument, NULL, 2},
 		{"max-port", required_argument, NULL, 3},
+		{"connect-timeout", required_argument, NULL, 5},
+		{"send-timeout", required_argument, NULL, 6},
 		{"passwd", no_argument, NULL, 4},
 		{"debug", required_argument, NULL, 'd'},
 		{"sslkey", required_argument, NULL, 'k'},
@@ -344,6 +350,20 @@ static int parse_cmd_line(int argc, char *argv[], struct options *opts)
 			break;
 		case 4:
 			opts->passwd = 1;
+			break;
+		case 5:
+			if (optarg == NULL)
+				usage(VZ_VNC_ERR_PARAM);
+			opts->ws_connect_timeout = strtol(optarg, &p, 10);
+			if (*p != '\0')
+				usage(VZ_VNC_ERR_PARAM);
+			break;
+		case 6:
+			if (optarg == NULL)
+				usage(VZ_VNC_ERR_PARAM);
+			opts->ws_send_timeout = strtol(optarg, &p, 10);
+			if (*p != '\0')
+				usage(VZ_VNC_ERR_PARAM);
 			break;
 		case 'h':
 			usage(VZ_VNC_ERR_PARAM);
@@ -543,6 +563,12 @@ int main(int argc,char **argv)
 		if (opts.max_port)
 			console->screen->maxPort = opts.max_port;
 	}
+
+	if (opts.ws_connect_timeout)
+		console->screen->wsClientConnect = opts.ws_connect_timeout;
+
+	if (opts.ws_send_timeout)
+		console->screen->wsClientSend = opts.ws_send_timeout;
 
 	if (opts.passwd) {
 		memset(passwd, 0, MAX_PASSWD);
