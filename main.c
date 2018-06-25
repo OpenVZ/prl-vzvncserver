@@ -295,13 +295,13 @@ static int parse_cmd_line(int argc, char *argv[], struct options *opts)
 	if (cfg)
 	{
 		const char * out;
-		if (!vzctl2_conf_get_param(cfg, "WS_CONNECT_TIMEOUT", &out) && out)
+		if (!vzctl2_conf_get_param(cfg, "WEBSOCKET_CONNECT_TIMEOUT", &out) && out)
 		{
 			int ws_connect_timeout = strtol(out, &p, 10);
 			if (*p == '\0')
 				opts->ws_connect_timeout = ws_connect_timeout;
 		}
-		if (!vzctl2_conf_get_param(cfg, "WS_SEND_TIMEOUT", &out) && out)
+		if (!vzctl2_conf_get_param(cfg, "WEBSOCKET_SEND_TIMEOUT", &out) && out)
 		{
 			int ws_send_timeout = strtol(out, &p, 10);
 			if (*p == '\0')
