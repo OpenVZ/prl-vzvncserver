@@ -268,7 +268,7 @@ struct options {
 
 static int parse_cmd_line(int argc, char *argv[], struct options *opts)
 {
-	int c;
+	int c, err;
 	char *p;
 	struct option options[] =
 	{
@@ -288,8 +288,27 @@ static int parse_cmd_line(int argc, char *argv[], struct options *opts)
 		{"help", no_argument, NULL, 'h'},
 		{ NULL, 0, NULL, 0 }
 	};
+	struct vzctl_config * cfg = vzctl2_conf_open(VZ_GLOBAL_CFG, VZCTL_CONF_SKIP_GLOBAL, &err);
 
 	memset((void *)opts, 0, sizeof(struct options));
+
+	if (cfg)
+	{
+		const char * out;
+		if (!vzctl2_conf_get_param(cfg, "WS_CONNECT_TIMEOUT", &out) && out)
+		{
+			int ws_connect_timeout = strtol(out, &p, 10);
+			if (*p == '\0')
+				opts->ws_connect_timeout = ws_connect_timeout;
+		}
+		if (!vzctl2_conf_get_param(cfg, "WS_SEND_TIMEOUT", &out) && out)
+		{
+			int ws_send_timeout = strtol(out, &p, 10);
+			if (*p == '\0')
+				opts->ws_send_timeout = ws_send_timeout;
+		}
+		vzctl2_conf_close(cfg);
+	}
 
 	while (1)
 	{
@@ -567,8 +586,12 @@ int main(int argc,char **argv)
 	if (opts.ws_connect_timeout)
 		console->screen->wsClientConnect = opts.ws_connect_timeout;
 
+	rfbLog("Websocket client connect timeout: %d ms\n", console->screen->wsClientConnect);
+
 	if (opts.ws_send_timeout)
 		console->screen->wsClientSend = opts.ws_send_timeout;
+
+	rfbLog("Websocket client send timeout: %d ms\n", console->screen->wsClientSend);
 
 	if (opts.passwd) {
 		memset(passwd, 0, MAX_PASSWD);
