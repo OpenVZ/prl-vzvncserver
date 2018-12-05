@@ -256,6 +256,11 @@ void vcInsertLines(vncConsolePtr c, int from, int f)
 {
 	int g, y, y2;
 
+	// According to vt programmers guide we should ignore
+	// IL commands if cursor is outside of scrolling region
+	if (from < c->sstart || from >= c->sheight)
+		return;
+
 	if ( f > c->sheight - from)
 		f = c->sheight - from;
 
@@ -301,6 +306,11 @@ void vcInsertLines(vncConsolePtr c, int from, int f)
 void vcDeleteLines(vncConsolePtr c, int from, int f)
 {
 	int g, y;
+
+	// According to vt programmers guide we should ignore
+	// DL commands if cursor is outside of scrolling region
+	if (from < c->sstart || from >= c->sheight)
+		return;
 
 	if ( f > c->sheight - from)
 		f = c->sheight - from;
