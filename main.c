@@ -124,12 +124,12 @@ struct linuxConsoleSequence
 
 void do_key(rfbBool down,rfbKeySym keySym,rfbClientPtr cl)
 {
-	static char isControl = 0;
+	static short isControl = 0;
 	(void)cl;
 
 	if(down) {
 		if(keySym==XK_Control_L || keySym==XK_Control_R)
-			isControl++;
+			isControl = 1;
 		else if(tty_fd>=0)
 		{
 			int i;
@@ -158,8 +158,7 @@ void do_key(rfbBool down,rfbKeySym keySym,rfbClientPtr cl)
 			}
 		}
 	} else if(keySym==XK_Control_L || keySym==XK_Control_R)
-		if(isControl>0)
-			isControl--;
+		isControl = 0;
 }
 
 static void do_client_disconnect(rfbClientPtr cl)
