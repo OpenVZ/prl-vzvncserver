@@ -161,17 +161,30 @@ void do_key(rfbBool down,rfbKeySym keySym,rfbClientPtr cl)
 		isControl = 0;
 }
 
+time_t last_access;
+
 static void do_client_disconnect(rfbClientPtr cl)
 {
-    syslog(LOG_INFO, "%s: Client %s disconnected", title, cl->host);
+	vzvnc_logger(VZ_VNC_INFO, "Client %s disconnected", cl->host);
+	last_access = time(NULL);
 }
 
 static enum rfbNewClientAction do_client_connect(rfbClientPtr cl)
 {
-    cl->clientGoneHook = do_client_disconnect;
-    syslog(LOG_INFO, "%s: Client %s connected", title, cl->host);
+	time_t current = time(NULL);
+	if (difftime(current, last_access) < 1.0) {
+		vzvnc_logger(VZ_VNC_INFO, "Client %s will be gently delayed",
+				cl->host);
+		/* just a little sleep to prevent possible DDoS */
+		usleep(cl->screen->deferUpdateTime ?
+			cl->screen->deferUpdateTime * 100000 : 500000);
+	}
 
-    return RFB_CLIENT_ACCEPT;
+	cl->clientGoneHook = do_client_disconnect;
+	vzvnc_logger(VZ_VNC_INFO, "Client %s connected", cl->host);
+	last_access = time(NULL);
+
+	return RFB_CLIENT_ACCEPT;
 }
 
 
