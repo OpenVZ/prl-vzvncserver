@@ -57,7 +57,7 @@
 #define MAX_TTY		12
 
 static char progname[NAME_MAX + 1];
-static char title[256];
+static char title[128];
 
 static int handle_rfb_event = 0;
 static sig_atomic_t shutting_down = 0;
@@ -422,7 +422,7 @@ int main(int argc,char **argv)
 
 	int dev;
 	char name[512];
-	struct vzctl_ve_configure c = {};
+	struct vzctl_ve_configure c;
 	struct vzctl_env_handle *h = NULL;
 	ctid_t ctid = {};
 	ssize_t sz;
@@ -454,7 +454,7 @@ int main(int argc,char **argv)
 			timeinfo->tm_year + 1900, timeinfo->tm_mon + 1, timeinfo->tm_mday);
 
 	vzctl2_init_log("prl_vzvncserver");
-	vzctl2_set_flags(VZCTL_FLAG_DONT_USE_WRAP);
+
 	if ((rc = vzctl2_lib_init()))
 		return vzvnc_error(VZ_VNC_ERR_SYSTEM, "Failed to initialize libvzctl: %d", rc);
 
@@ -476,92 +476,80 @@ int main(int argc,char **argv)
 		return vzvnc_error(VZ_VNC_ERR_SYSTEM, "pthread_mutex_init(): %m");
 #endif
 
+	dev = open(vzctl, O_RDONLY);
+	if (dev < 0) {
+		rc = vzvnc_error(VZ_VNC_ERR_SYSTEM, "open(%s): %m", vzctl);
+		goto cleanup_0;
+	}
+
 	h = vzctl2_env_open(ctid, 0, &rc);
 	if (rc)
 		goto cleanup_0;
 
-	if (access("/proc/user_beancounters", F_OK) == 0) {
-		dev = open(vzctl, O_RDONLY);
-		if (dev < 0) {
-			rc = vzvnc_error(VZ_VNC_ERR_SYSTEM, "open(%s): %m", vzctl);
+	c.veid = vzctl2_env_get_veid(h);
+	c.key = VE_CONFIGURE_OPEN_TTY;
+	c.size = 0;
+
+	for( c.val = system_console? 0 : 1;
+		 c.val < MAX_TTY; c.val++ )
+	{
+		if( (tty_fd = ioctl(dev, VZCTL_VE_CONFIGURE, &c)) >= 0)
+			break;
+
+		if( system_console )
+		{
+			rc = vzvnc_error(VZ_VNC_ERR_SYSTEM,
+							 "Setting up system console failed with: %m");
+			close(dev);
 			goto cleanup_0;
 		}
-
-		c.veid = vzctl2_env_get_veid(h);
-		c.key = VE_CONFIGURE_OPEN_TTY;
-		c.size = 0;
-
-		for( c.val = system_console? 0 : 1;
-				c.val < MAX_TTY; c.val++ )
-		{
-			if( (tty_fd = ioctl(dev, VZCTL_VE_CONFIGURE, &c)) >= 0)
-				break;
-			if( system_console )
-			{
-				rc = vzvnc_error(VZ_VNC_ERR_SYSTEM,
-						"Setting up system console failed with: %m");
-				close(dev);
-				goto cleanup_0;
-			}
-			vzvnc_error( VZ_VNC_DEBUG, "ioctl(VZCTL_VE_CONFIGURE) for tty%d: %m", c.val+1 );
-		}
-
-		close(dev);
-		if (tty_fd < 0)
-		{
-			rc = vzvnc_error(VZ_VNC_ERR_SYSTEM, "All %d tty devices are busy in CT %s. Exiting...", MAX_TTY, ctid);
-			goto cleanup_0;
-		}
-
-		if (c.val > 1)
-		{
-			pid_t pid;
-			int status;
-			char tty_buf[3]; //MAX_TTY == 12, maximum - 2 chars
-
-			sprintf(tty_buf, "%u", c.val + 1);
-
-			char *args[] = {"/usr/sbin/vzctl", "console", ctid, "--start", tty_buf, NULL};
-
-			pid = fork();
-			if (pid == -1)
-			{
-				rc = vzvnc_error( VZ_VNC_ERR_SYSTEM, "Unable to start vzctl console: fork failed"); 
-				goto cleanup_0;
-			}
-			else if (pid > 0)
-			{
-				if (waitpid(pid, &status, 0) != pid)
-				{
-					rc = vzvnc_error( VZ_VNC_ERR_SYSTEM, "Unable to start vzctl console: waitpid failed");
-					goto cleanup_0;
-				}
-				if (WIFEXITED(status) && WEXITSTATUS(status))
-				{
-					rc = vzvnc_error( VZ_VNC_ERR_SYSTEM, "Unable to start vzctl console: program returned %d", status);
-					goto cleanup_0;
-				}
-			}
-			else
-			{
-				execv(args[0], args);
-				exit(1);
-			}
-		}
-		snprintf(title, sizeof(title), "CT %s tty%d", ctid, c.val + 1);
-	} else {
-		struct vzctl_console con = {};
-
-		if (vzctl2_console_start(h, &con)) {
-			rc = vzvnc_error(VZ_VNC_ERR_SYSTEM, "Can't start CT console: %s",
-					vzctl2_get_last_error());
-			goto cleanup_0;
-		}
-		tty_fd = con.master_fd;
-
-		snprintf(title, sizeof(title), "CT %s %s", ctid, con.tty_path);
+		vzvnc_error( VZ_VNC_DEBUG, "ioctl(VZCTL_VE_CONFIGURE) for tty%d: %m", c.val+1 );
 	}
 
+	close(dev);
+	if (tty_fd < 0)
+	{
+		rc = vzvnc_error(VZ_VNC_ERR_SYSTEM, "All %d tty devices are busy in CT %s. Exiting...", MAX_TTY, ctid);
+		goto cleanup_0;
+	}
+
+	if (c.val > 1)
+	{
+        pid_t pid;
+        int status;
+        char tty_buf[3]; //MAX_TTY == 12, maximum - 2 chars
+
+        sprintf(tty_buf, "%u", c.val + 1);
+
+        char *args[] = {"/usr/sbin/vzctl", "console", ctid, "--start", tty_buf, NULL};
+
+        pid = fork();
+        if (pid == -1)
+        {
+            rc = vzvnc_error( VZ_VNC_ERR_SYSTEM, "Unable to start vzctl console: fork failed"); 
+            goto cleanup_0;
+        }
+        else if (pid > 0)
+        {
+            if (waitpid(pid, &status, 0) != pid)
+            {
+                rc = vzvnc_error( VZ_VNC_ERR_SYSTEM, "Unable to start vzctl console: waitpid failed");
+                goto cleanup_0;
+            }
+            if (WIFEXITED(status) && WEXITSTATUS(status))
+            {
+                rc = vzvnc_error( VZ_VNC_ERR_SYSTEM, "Unable to start vzctl console: program returned %d", status);
+                goto cleanup_0;
+            }
+        }
+        else
+        {
+            execv(args[0], args);
+            exit(1);
+        }
+	}
+
+	snprintf(title, sizeof(title), "CT %s tty%d", ctid, c.val + 1);
 
 	/* console init */
 	if (opts.addr)
