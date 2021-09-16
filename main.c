@@ -190,14 +190,14 @@ static enum rfbNewClientAction do_client_connect(rfbClientPtr cl)
 
 /* these colours are from linux kernel drivers/char/console.c */
 unsigned char color_table[] = { 0, 4, 2, 6, 1, 5, 3, 7,
-				       8,12,10,14, 9,13,11,15 };
+					   8,12,10,14, 9,13,11,15 };
 /* the default colour table, for VGA+ colour systems */
 int default_red[] = {0x00,0xaa,0x00,0xaa,0x00,0xaa,0x00,0xaa,
-    0x55,0xff,0x55,0xff,0x55,0xff,0x55,0xff};
+	0x55,0xff,0x55,0xff,0x55,0xff,0x55,0xff};
 int default_grn[] = {0x00,0x00,0xaa,0x55,0x00,0x00,0xaa,0xaa,
-    0x55,0x55,0xff,0xff,0x55,0x55,0xff,0xff};
+	0x55,0x55,0xff,0xff,0x55,0x55,0xff,0xff};
 int default_blu[] = {0x00,0x00,0x00,0x00,0xaa,0xaa,0xaa,0xaa,
-    0x55,0x55,0x55,0x55,0xff,0xff,0xff,0xff};
+	0x55,0x55,0x55,0x55,0xff,0xff,0xff,0xff};
 
 static int system_console = 0;
 
@@ -537,38 +537,38 @@ int main(int argc,char **argv)
 
 	if (c.val > 1)
 	{
-        pid_t pid;
-        int status;
-        char tty_buf[3]; //MAX_TTY == 12, maximum - 2 chars
+		pid_t pid;
+		int status;
+		char tty_buf[3]; //MAX_TTY == 12, maximum - 2 chars
 
-        sprintf(tty_buf, "%u", c.val + 1);
+		sprintf(tty_buf, "%u", c.val + 1);
 
-        char *args[] = {"/usr/sbin/vzctl", "console", ctid, "--start", tty_buf, NULL};
+		char *args[] = {"/usr/sbin/vzctl", "console", ctid, "--start", tty_buf, NULL};
 
-        pid = fork();
-        if (pid == -1)
-        {
-            rc = vzvnc_error( VZ_VNC_ERR_SYSTEM, "Unable to start vzctl console: fork failed"); 
-            goto cleanup_0;
-        }
-        else if (pid > 0)
-        {
-            if (waitpid(pid, &status, 0) != pid)
-            {
-                rc = vzvnc_error( VZ_VNC_ERR_SYSTEM, "Unable to start vzctl console: waitpid failed");
-                goto cleanup_0;
-            }
-            if (WIFEXITED(status) && WEXITSTATUS(status))
-            {
-                rc = vzvnc_error( VZ_VNC_ERR_SYSTEM, "Unable to start vzctl console: program returned %d", status);
-                goto cleanup_0;
-            }
-        }
-        else
-        {
-            execv(args[0], args);
-            exit(1);
-        }
+		pid = fork();
+		if (pid == -1)
+		{
+			rc = vzvnc_error( VZ_VNC_ERR_SYSTEM, "Unable to start vzctl console: fork failed");
+			goto cleanup_0;
+		}
+		else if (pid > 0)
+		{
+			if (waitpid(pid, &status, 0) != pid)
+			{
+				rc = vzvnc_error( VZ_VNC_ERR_SYSTEM, "Unable to start vzctl console: waitpid failed");
+				goto cleanup_0;
+			}
+			if (WIFEXITED(status) && WEXITSTATUS(status))
+			{
+				rc = vzvnc_error( VZ_VNC_ERR_SYSTEM, "Unable to start vzctl console: program returned %d", status);
+				goto cleanup_0;
+			}
+		}
+		else
+		{
+			execv(args[0], args);
+			exit(1);
+		}
 	}
 
 	snprintf(title, sizeof(title), "CT %s tty%d", ctid, c.val + 1);
