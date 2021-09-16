@@ -248,8 +248,13 @@ static void usage(int code)
 	fprintf(stderr, "Usage: %s [options] Container ID\n", progname);
 	fprintf(stderr,"  Options:\n");
 	fprintf(stderr,"    -l/--listen ADDR    listen for connections only on network interface with\n");
-	fprintf(stderr,"                        addr ipaddr. '-listen localhost' and hostname work too.(-listen) \n");
+	fprintf(stderr,"                        addr ADDR. '-listen localhost' and hostname work too.(-listen) \n");
+	fprintf(stderr,"       --listenv6 ADDR  listen for IPv6 connections only on network interface with\n");
+	fprintf(stderr,"                        addr ADDR. \n");
 	fprintf(stderr,"    -p/--port N         TCP port for RFB protocol (-rfbport)\n");
+	fprintf(stderr,"                        used only for IPv4 if --portv6 option is specified, otherwise used for both IPv4 and IPv6\n");
+	fprintf(stderr,"       --portv6 N       TCP6 port for RFB protocol (-rfbportv6)\n");
+	fprintf(stderr,"                        negative N disables IPv6\n");
 	fprintf(stderr,"       --auto-port      select free TCP port for RFB protocol in range\n");
 	fprintf(stderr,"       --min-port       set lower limit of range for --auto-port option (includes)\n");
 	fprintf(stderr,"       --max-port       set upper limit of range for --auto-port option (includes)\n");
@@ -277,6 +282,8 @@ struct options {
 	int is_verbose;
 	int ws_connect_timeout;
 	int ws_send_timeout;
+	char *portv6;
+	char *addrv6;
 };
 
 static int parse_cmd_line(int argc, char *argv[], struct options *opts)
@@ -286,7 +293,9 @@ static int parse_cmd_line(int argc, char *argv[], struct options *opts)
 	struct option options[] =
 	{
 		{"listen", required_argument, NULL, 'l'},
+		{"listenv6", required_argument, NULL, 7},
 		{"port", required_argument, NULL, 'p'},
+		{"portv6", required_argument, NULL, 8},
 		{"auto-port", no_argument, NULL, 1},
 		{"min-port", required_argument, NULL, 2},
 		{"max-port", required_argument, NULL, 3},
@@ -397,6 +406,16 @@ static int parse_cmd_line(int argc, char *argv[], struct options *opts)
 			if (*p != '\0')
 				usage(VZ_VNC_ERR_PARAM);
 			break;
+		case 7:
+			if (optarg == NULL)
+				usage(VZ_VNC_ERR_PARAM);
+			opts->addrv6 = optarg;
+			break;
+		case 8:
+			if (optarg == NULL)
+				usage(VZ_VNC_ERR_PARAM);
+			opts->portv6 = optarg;
+			break;
 		case 'h':
 			usage(VZ_VNC_ERR_PARAM);
 			exit(0);
@@ -427,9 +446,9 @@ int main(int argc,char **argv)
 	ctid_t ctid = {};
 	ssize_t sz;
 	pthread_t thread;
-	int rfbArgc = 3;
+	int rfbArgc = 5;
 	// default VNS addr & port
-	char *rfbArgv[15] = {argv[0], (char *)"-listen", (char *)"0.0.0.0", NULL, NULL, NULL};
+	char *rfbArgv[15] = {argv[0], (char *)"-listen", (char *)"0.0.0.0", (char *)"-listenv6", (char *)"::", NULL};
 	struct options opts;
 	char passwd[MAX_PASSWD];
 	const char *passwds[] = {passwd, 0};
@@ -442,9 +461,12 @@ int main(int argc,char **argv)
 	parse_cmd_line(argc, argv, &opts);
 	if (optind >= argc)
 		usage(VZ_VNC_ERR_PARAM);
-	if (opts.port && opts.auto_port)
+    // For backward compatibility, use the same port for both protocols in case portv6 in unspecified
+    if (opts.port && !opts.portv6)
+        opts.portv6 = opts.port;
+	if ((opts.port || opts.portv6) && opts.auto_port)
 		return vzvnc_error(VZ_VNC_ERR_PARAM,
-			"both parameters --port and --auto-port were specified");
+			"both parameters --port[v6] and --auto-port were specified");
 
 	snprintf(path, sizeof(path), "/var/log/%s", progname);
 	mkdir(path, 0755);
@@ -554,16 +576,22 @@ int main(int argc,char **argv)
 	/* console init */
 	if (opts.addr)
 		rfbArgv[2] = opts.addr;
+	if (opts.addrv6)
+		rfbArgv[4] = opts.addrv6;
 
 	if (opts.port) {
 		rfbArgv[rfbArgc++] = (char *)"-rfbport";
 		rfbArgv[rfbArgc++] = opts.port;
-		rfbArgv[rfbArgc++] = (char *)"-rfbportv6";
-		rfbArgv[rfbArgc++] = opts.port;
 		rfbArgv[rfbArgc] = NULL;
 	}
 
-	vzvnc_logger(VZ_VNC_INFO, "CT %s, addr %s port %s", ctid, rfbArgv[2], rfbArgv[4]);
+	if (opts.portv6) {
+		rfbArgv[rfbArgc++] = (char *)"-rfbportv6";
+		rfbArgv[rfbArgc++] = opts.portv6;
+		rfbArgv[rfbArgc] = NULL;
+	}
+
+	vzvnc_logger(VZ_VNC_INFO, "CT %s, ipv4 addr %s ipv6 addr %s", ctid, rfbArgv[2], rfbArgv[4]);
 
 	if (opts.sslkey)
 	{
